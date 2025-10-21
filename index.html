@@ -129,7 +129,16 @@ const updateInterviewView = (id) => {
   window.interviewId = id
 }
 
+
 const updateTopic = (id) => {
+
+  //remove active class from other buttons and add it to clicked button
+  document.querySelectorAll('.topic-list button').forEach((elem) => {
+    elem.classList.remove('active');
+  });
+  event.target.parentElement.classList.add('active');
+
+
   // Save current audio state if we're coming from an interview page
   if (window.audio && window.globalAudioState.currentInterviewId) {
     saveAudioState(window.audio, window.globalAudioState.currentInterviewId)
@@ -307,12 +316,13 @@ const renderNav = (interviews, topics) => {
     </div>
     </div>
     <div class="nav-right">
+    <div id="topic">Select a topic to display it here...</div>
       <div id="summary">
       <p>The Community Resource Pod (CRP) is a collective of creatives, food workers, and food justice advocates committed to amplifying the voices of growers in Chicago’s food community.. Our vision is to build community power and capacity through creating templates, resources, and platforms centering the rights and autonomy of the storytellers, the land, and our community.
 The Resource Stories website is a space for growers to share stories that demystify land cultivation and stewardship—highlighting successes, challenges, and the critical resources they utilized along the way. These stories will serve as accessible blueprints for others invested in food sovereignty and farming, offering both inspiration and practical tools for those embarking on their own growing journeys.
 </p>  
       </div>
-      <div id="topic"></div>
+      
     <button id="menu" onclick="withHistory({}, toggleMenu)"><div class="menu-text">MENU</div></a>
     </div>
   </div>

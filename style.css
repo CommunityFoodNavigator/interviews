@@ -4,6 +4,10 @@
   --beige: #f3eee4;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: "Albert Sans", sans-serif;
@@ -47,7 +51,13 @@ td {
 }
 
 #topic {
-  padding: 50px;
+  /* padding: 50px; */
+  flex: 1;
+}
+#summary {
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 1rem;
 }
 
 .topic-section {
@@ -144,7 +154,7 @@ td {
 .interview {
   display: flex;
   height: 100vh;
-  overflow: scroll;
+  overflow: auto;
 }
 
 .interview table {
@@ -222,6 +232,7 @@ td {
 }
 
 #menu {
+  display: none;
   position: absolute;
   right: -45px;
   top: 0;
@@ -237,6 +248,13 @@ td {
   border-bottom: 0px;
   cursor: pointer;
   transition: background 1s ease;
+}
+.hidden-nav #menu {
+  display: block;
+}
+.hidden-nav #topic,
+.hidden-nav #summary  {
+  display: none;
 }
 
 #menu:hover {
@@ -342,7 +360,7 @@ td {
 
 #nav-container {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
   width: 100%;
   overflow: hidden;
 }
@@ -369,6 +387,9 @@ td {
   flex: 2;
   padding: 60px;
   padding-right: 72px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
 }
 
 .nav-right h2,
@@ -411,6 +432,10 @@ tr.excerpt td {
 
 .p-sm {
   padding: 10px;
+}
+.topic-list button.active {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
 }
 
 @media only screen and (max-width: 1024px) {
