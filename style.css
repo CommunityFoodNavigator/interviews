@@ -116,10 +116,7 @@ td {
 .time {
   display: flex;
 }
-table, table * {
-  font-size: 2rem;
 
-}
 
 .content {
   max-width: 600px;
@@ -129,6 +126,13 @@ table, table * {
 }
 
 @media only screen and (max-width: 1024px) {
+
+  table,
+  table * {
+    font-size: 2rem;
+
+  }
+
   .content {
     max-width: none;
     width: 100%;
