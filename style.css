@@ -545,6 +545,9 @@ tr.excerpt td {
     display: block;
     background-color: var(--beige);
     bottom: 0;
+    /* attempts to fix issue where audio is getting cut off: */
+    height: auto;
+    padding: 0; 
   }
 
   .excerpt {
