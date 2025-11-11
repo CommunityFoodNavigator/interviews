@@ -130,13 +130,46 @@ const updateInterviewView = (id) => {
 }
 
 
+function scrollToTopicSection() {
+  document.getElementById('topic').scrollIntoView({ behavior: 'smooth' });
+}
+
+document.addEventListener('click', function(e) {
+  if(e.target.closest('.topicButton')) {
+    scrollToTopicSection();
+  }
+
+});
+
+
+
+// document.querySelectorAll('.topic-list button').forEach((elem) => {
+//     elem.classList.remove('active');
+//   });
+//   console.log(typeof(event.target.closest('button')));
+  
+//   if(typeof(event.target.closest('button')) != 'undefined') {
+// event.target.closest('button').classList.add('active');
+//   }
+
+
 const updateTopic = (id) => {
 
-  //remove active class from other buttons and add it to clicked button
-  document.querySelectorAll('.topic-list button').forEach((elem) => {
+  document.querySelectorAll('.topic-list button').forEach ((elem) => {
     elem.classList.remove('active');
   });
-  event.target.parentElement.classList.add('active');
+  document.querySelector(`[data-topic-id="${id}"]`).classList.add('active');
+
+
+  //remove active class from other buttons and add it to clicked button
+  
+  
+  // setTimeout needed if clicking on a topic from interview view...
+  // setTimeout(function(){
+  //   document.getElementById('topic').scrollIntoView({ behavior: 'smooth' });
+  // }, 500);
+
+
 
 
   // Save current audio state if we're coming from an interview page
@@ -263,10 +296,10 @@ const renderExcerpt = (excerpt) => {
   const timeMs = time * 1000
   const timeReadable = new Date(timeMs).toISOString().substring(11, 19)
   console.log(excerpt["Topic"])
-  const topics = excerpt["Topic"].map(t => `<a onclick="withHistory({topic: ${t.id}}, updateTopic, ${t.id})">${t.value} ↠</a>`).join('\n')
+  const topics = excerpt["Topic"].map(t => `<a class="interviewTopicButton" onclick="withHistory({topic: ${t.id}}, updateTopic, ${t.id})">${t.value} ↠</a>`).join('\n')
   const topicList = excerpt["Topic"].length === 0 ? '' : `
     <div class="topic-list" onclick="stopEventBubble(event)">
-      <label>Resources</label>
+      <label>Topics</label>
       ${topics}
     </div>
   `
@@ -303,7 +336,7 @@ return `<button onclick="withHistory({interview: ${id}}, updateInterviewView, ${
   const topicList = topics.map(topic => {
     const id = topic["id"]
     const name = topic["Name"]
-    return `<button onclick="withHistory({topic: ${id}}, updateTopic, ${id})"><div>${name}</div></button>`
+    return `<button class="topicButton" data-topic-id="${id}" onclick="withHistory({topic: ${id}}, updateTopic, ${id})"><div>${name}</div></button>`
   }).join('\n')
   const navTemplate = `
   <div id="nav-container">
@@ -422,11 +455,13 @@ const renderInterview = (interview) => {
     <h3>${name}</h3>
     </div>
     ${imageMarkup}
+    <div class="audioScrollWrap">
     <audio id="audio-${id}" controls="" preload="auto" onplay="onAudioPlayed(event)" onseeked="onAudioSeeked(event)" data-interview-id="${id}">
     <source src="${audioUrl}" type="audio/mp3" />
   </audio>
   <div class="p-sm">
   <button onclick="scrollToActiveSection()" type="button" class="scroll-btn">⇅ Scroll to the Active Interview Section</button>
+  </div>
   </div>
   </div>
 </div>

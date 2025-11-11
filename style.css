@@ -314,6 +314,12 @@ td {
     font-size: 16px;
     max-width: none;
   }
+  #topic {
+    padding-top: 2rem;
+  }
+  #topic h2 {
+    margin-top: 0;
+  }
 }
 
 .resources-block:empty {
@@ -437,11 +443,18 @@ tr.excerpt td {
 }
 
 :root {
-  --mobileMenuHeight: 80px;
+  --mobileMenuHeight: 100px;
 }
 
 /* mobile styles */
 @media only screen and (max-width: 1024px) {
+
+  #interviews {
+    display: none;
+  }
+  .hidden-nav + #interviews {
+    display: block;
+  }
 
   #nav-container,
   .nav-right {
@@ -500,22 +513,24 @@ tr.excerpt td {
   }
 
   #menu {
-    height: auto;
-    width: 100%;
+    height: var(--mobileMenuHeight);
+    flex-direction: column;
+    justify-content: center;
     top: auto;
     bottom: 0;
-    border-left: 0px;
-    padding: 11px 0;
+    border: 0;
+    width: 100%;
   }
 
   .menu-text {
     rotate: 0deg;
     /* font-size: 16px; */
   }
-
+  #nav, .meta-section {
+    border: 0;
+  }
   .meta-section {
     margin-top: var(--mobileMenuHeight);
-    border-left: 0px;
     height: auto;
     width: 100%;
   }
@@ -526,6 +541,8 @@ tr.excerpt td {
   }
 
   .nav-left {
+    position: relative;
+    height: auto;
     align-self: center;
     border-right: none;
     border-bottom: 2px solid currentColor;
@@ -539,16 +556,25 @@ tr.excerpt td {
   .excerpt-section {
     order: 2;
   }
-
+  .audioScrollWrap {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #fff;
+  }
   audio {
+    font-size: 2rem;
+  }
+
+  /* audio {
     position: fixed;
     display: block;
     background-color: var(--beige);
     bottom: 0;
-    /* attempts to fix issue where audio is getting cut off: */
     height: auto;
     padding: 0; 
-  }
+  } */
 
   .excerpt {
     display: flex;
