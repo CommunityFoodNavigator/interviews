@@ -580,7 +580,9 @@ tr.excerpt td {
   audio {
     border: 0;
     padding: 0;
-    margin: 0 0 30px;
+    margin: 10px;
+    position: relative;
+    z-index: 1;
   }
 
   /* audio {
