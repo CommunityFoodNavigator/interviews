@@ -38,11 +38,11 @@ h3 {
 }
 
 audio {
-  border-top: 2px solid black;
+  /* border-top: 2px solid black;
   border-bottom: 2px solid black;
   width: -webkit-fill-available;
   width: -moz-available;
-  padding: 10px;
+  padding: 10px; */
 }
 
 td {
@@ -578,7 +578,6 @@ tr.excerpt td {
   }
 
   audio {
-    font-size: 2rem;
     border: 0;
     padding: 0;
     margin: 10px;
