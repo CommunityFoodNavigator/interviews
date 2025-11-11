@@ -259,6 +259,12 @@ td {
   display: block;
 }
 
+@media only screen and (max-width: 1024px) {
+  .hidden-nav #menu {
+    display: flex;
+  }
+}
+
 .hidden-nav #topic,
 .hidden-nav #summary {
   display: none;
@@ -314,9 +320,11 @@ td {
     font-size: 16px;
     max-width: none;
   }
+
   #topic {
     padding-top: 2rem;
   }
+
   #topic h2 {
     margin-top: 0;
   }
@@ -452,7 +460,8 @@ tr.excerpt td {
   #interviews {
     display: none;
   }
-  .hidden-nav + #interviews {
+
+  .hidden-nav+#interviews {
     display: block;
   }
 
@@ -514,8 +523,8 @@ tr.excerpt td {
 
   #menu {
     height: var(--mobileMenuHeight);
-    flex-direction: column;
     justify-content: center;
+    align-items: center;
     top: auto;
     bottom: 0;
     border: 0;
@@ -526,9 +535,12 @@ tr.excerpt td {
     rotate: 0deg;
     /* font-size: 16px; */
   }
-  #nav, .meta-section {
+
+  #nav,
+  .meta-section {
     border: 0;
   }
+
   .meta-section {
     margin-top: var(--mobileMenuHeight);
     height: auto;
@@ -556,6 +568,7 @@ tr.excerpt td {
   .excerpt-section {
     order: 2;
   }
+
   .audioScrollWrap {
     position: fixed;
     bottom: 0;
@@ -563,8 +576,12 @@ tr.excerpt td {
     right: 0;
     background-color: #fff;
   }
+
   audio {
     font-size: 2rem;
+    border: 0;
+    padding: 0;
+    margin: 10px;
   }
 
   /* audio {

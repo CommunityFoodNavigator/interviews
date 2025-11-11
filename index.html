@@ -84,6 +84,10 @@ const setAppStateFromUrl = () => {
 
 window.addEventListener("popstate", setAppStateFromUrl)
 
+function scrollToTopicSection() {
+  document.getElementById('topic').scrollIntoView({ behavior: 'smooth' });
+}
+
 const renderMarkup = () => {
   document.querySelector("#nav").innerHTML = renderNav(baserowCache.interview.results, baserowCache.topic.results)
 }
@@ -126,13 +130,20 @@ const updateInterviewView = (id) => {
     setAudioPositionFromUrl(window.location.search, audio);
   }
   
-  window.interviewId = id
+  window.interviewId = id;
+
+  // scroll on interview topic click
+  document.querySelectorAll('.interviewTopicButton').forEach((elem) => {
+    elem.addEventListener('click', function() {
+      setTimeout(() => {
+        scrollToTopicSection();
+      }, 500);
+    })
+  });
+
 }
 
 
-function scrollToTopicSection() {
-  document.getElementById('topic').scrollIntoView({ behavior: 'smooth' });
-}
 
 document.addEventListener('click', function(e) {
   if(e.target.closest('.topicButton')) {
@@ -143,14 +154,7 @@ document.addEventListener('click', function(e) {
 
 
 
-// document.querySelectorAll('.topic-list button').forEach((elem) => {
-//     elem.classList.remove('active');
-//   });
-//   console.log(typeof(event.target.closest('button')));
-  
-//   if(typeof(event.target.closest('button')) != 'undefined') {
-// event.target.closest('button').classList.add('active');
-//   }
+
 
 
 const updateTopic = (id) => {
