@@ -403,6 +403,7 @@ td {
   overflow: auto;
 }
 
+
 .nav-right h2,
 .nav-right h3 {
   text-align: left;
@@ -456,6 +457,13 @@ tr.excerpt td {
 
 /* mobile styles */
 @media only screen and (max-width: 1024px) {
+
+  .nav-right {
+  padding: 1rem;
+}
+.topic-section {
+  max-width: none;
+}
 
   #interviews {
     display: none;
