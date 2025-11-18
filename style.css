@@ -581,6 +581,7 @@ tr.excerpt td {
     border: 0;
     padding: 0;
     margin: 10px;
+    display: block;
     position: relative;
     z-index: 1;
   }
