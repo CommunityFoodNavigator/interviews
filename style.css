@@ -606,6 +606,9 @@ tr.excerpt td {
 
   } */
 
+  audio {
+    margin: 10px 10px 30px;
+  }
 
   .excerpt {
     display: flex;
