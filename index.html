@@ -1,314 +1,334 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<title>Chicago Food System Interview Project - Community Food Navigator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Spectral:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,100..900;1,100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Spectral:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap" rel="stylesheet">
-<script src="js/showdown.min.js"></script>
-<!-- NOTE: i assume jQuery is only here for debugging purposes? Doesn't look like it's used anywhere in the code. -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <title>Chicago Food System Interview Project - Community Food Navigator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Spectral:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap"
+    rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,100..900;1,100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Spectral:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap"
+    rel="stylesheet">
+  <script src="js/showdown.min.js"></script>
+  <!-- NOTE: i assume jQuery is only here for debugging purposes? Doesn't look like it's used anywhere in the code. -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
-<script>
-window.globals = {
-  "baserow": {
-    "url": "https://api.baserow.io/api",
-    "token": "cSubd5vZjON0ekgsikysGg3aFIPciIqq",
-    "databaseId": "27606",
-    "tableIds": {
-      "interview": "61327",
-      "excerpt": "61328",
-      "topic": "383980",
-    }
-  }
-}
-
-window.baserowCache = {
-  interview: null,
-  excerpt: null,
-  topic: null,
-}
-
-window.markdownRenderer = new showdown.Converter()
-window.interviewPositionMs = 0;
-window.audio = null
-window.excerpts = null
-window.interviewId = null
-window.topicId = null
-
-// Global audio state management
-window.globalAudioState = {
-  currentTime: 0,
-  currentInterviewId: null,
-  isPlaying: false,
-  currentSource: null
-}
-
-
-window.onload = async () => {
-  console.log("--- application is booting ---")
-  await fetchEverythingFromBaserow()
-  console.log("--- baserow fetch successful; rendering ---")
-  renderMarkup()
-  setAppStateFromUrl()
-}
-
-const blobFromUrlParams = () => {
-  // NOTE: taken from stackoverflow
-  return location.search
-    .slice(1)
-    .split('&')
-    .map(p => p.split('='))
-    .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-}
-
-const setAppStateFromUrl = () => {
-  console.log("setting app state from url")
-  const search = blobFromUrlParams()
-  if (search.interview !== "undefined") {
-    updateInterviewView(search.interview)
-    if (search.excerpt !== "undefined") {
-      highlightExcerptById(search.excerpt)
-      scrollToActiveSection()
-    }
-  } else if(search.topic !== "undefined") {
-    updateTopic(search.topic)
-  } else {
-    openMenu()
-  }
-}
-
-window.addEventListener("popstate", setAppStateFromUrl)
-
-function scrollToTopicSection() {
-  document.getElementById('topic').scrollIntoView({ behavior: 'smooth' });
-}
-
-const renderMarkup = () => {
-  document.querySelector("#nav").innerHTML = renderNav(baserowCache.interview.results, baserowCache.topic.results)
-}
-
-const updateInterviewView = (id) => {
-  console.log("id is ", id)
-  console.log("cached interviews are ", baserowCache.interview.results)
-  
-  // Always stop topic audio when navigating to interview view
-  if (window.topicAudio) {
-    saveAudioState(window.topicAudio, window.globalAudioState.currentInterviewId)
-    window.topicAudio.pause()
-    window.topicAudio.currentTime = 0
-    // Remove the audio element from DOM completely
-    window.topicAudio.remove()
-    window.topicAudio = null
-  }
-  
-  // Also pause any existing topic audio elements in the DOM
-  const existingTopicAudio = document.querySelector('#topic-audio')
-  if (existingTopicAudio) {
-    existingTopicAudio.pause()
-    existingTopicAudio.currentTime = 0
-  }
-  
-  const interview = baserowCache.interview.results.find(i => i.id == id)
-  console.log("interview blob is ", interview)
-  document.querySelector("#interviews").innerHTML = renderInterview(interview)
-  document.querySelector("#nav").classList.add("hidden-nav");
-  window.audio = document.querySelector('audio');
-  window.excerpts = Array.from(document.querySelectorAll('.excerpt'));
-  
-  // Add conflict prevention to interview audio
-  addAudioConflictPrevention(window.audio)
-  
-  // Restore audio state if this is the same interview that was playing
-  if (window.globalAudioState.currentInterviewId == id) {
-    restoreAudioState(window.audio, id)
-  } else {
-    setAudioPositionFromUrl(window.location.search, audio);
-  }
-  
-  window.interviewId = id;
-
-  // scroll on interview topic click
-  document.querySelectorAll('.interviewTopicButton').forEach((elem) => {
-    elem.addEventListener('click', function() {
-      setTimeout(() => {
-        scrollToTopicSection();
-      }, 500);
-    })
-  });
-
-}
-
-
-
-document.addEventListener('click', function(e) {
-  if(e.target.closest('.topicButton')) {
-    scrollToTopicSection();
-  }
-
-});
-
-
-
-
-
-
-const updateTopic = (id) => {
-
-  document.querySelectorAll('.topic-list button').forEach ((elem) => {
-    elem.classList.remove('active');
-  });
-  document.querySelector(`[data-topic-id="${id}"]`).classList.add('active');
-
-
-  //remove active class from other buttons and add it to clicked button
-  
-  
-  // setTimeout needed if clicking on a topic from interview view...
-  // setTimeout(function(){
-  //   document.getElementById('topic').scrollIntoView({ behavior: 'smooth' });
-  // }, 500);
-
-
-
-
-  // Save current audio state if we're coming from an interview page
-  if (window.audio && window.globalAudioState.currentInterviewId) {
-    saveAudioState(window.audio, window.globalAudioState.currentInterviewId)
-  }
-  
-  const topicBlob = baserowCache.topic.results.find(t => t.id === id)
-  document.querySelector("#topic").innerHTML = renderTopicSection(topicBlob)
-  openMenu()
-  window.topicId = id
-  
-  // Initialize topic audio player
-  window.topicAudio = document.querySelector('#topic-audio')
-  if (window.topicAudio) {
-    // Add conflict prevention to topic audio
-    addAudioConflictPrevention(window.topicAudio)
-    
-    window.topicAudio.addEventListener('loadeddata', function() {
-      console.log('Topic audio loaded')
-      
-      // Restore audio state if we have a current interview playing
-      if (window.globalAudioState.currentInterviewId) {
-        restoreAudioState(window.topicAudio, window.globalAudioState.currentInterviewId)
+  <script>
+    window.globals = {
+      "baserow": {
+        "url": "https://api.baserow.io/api",
+        "token": "cSubd5vZjON0ekgsikysGg3aFIPciIqq",
+        "databaseId": "27606",
+        "tableIds": {
+          "interview": "61327",
+          "excerpt": "61328",
+          "topic": "383980",
+        }
       }
-    })
-  }
-}
+    }
 
-const openMenu = () => {
-  document.querySelector("#nav").classList.remove("hidden-nav");
-}
+    window.baserowCache = {
+      interview: null,
+      excerpt: null,
+      topic: null,
+    }
 
-const toggleMenu = () => {
-  const nav = document.querySelector("#nav");
-  if (nav.classList.contains("hidden-nav")) {
-    // Menu is closed, open it
-    openMenu();
-  } else {
-    // Menu is open, close it and return to interview view
-    nav.classList.add("hidden-nav");
-  }
-}
+    window.markdownRenderer = new showdown.Converter()
+    window.interviewPositionMs = 0;
+    window.audio = null
+    window.excerpts = null
+    window.interviewId = null
+    window.topicId = null
 
-const fetchEverythingFromBaserow = async () => {
-  const { interview, excerpt, topic } = globals.baserow.tableIds
-  // NOTE: this was written under the assumption that there aren't enough rows in these tables to cause pagination; as written,
-  // this will only pull the first page of results from each table. assuming this thing isn't going to scale arbitarily, we 
-  // could get away with continuing to fetch records and shove them into the cache until each table is exhausted.
-  baserowCache.interview = await fetchFromBaserow(`/database/rows/table/${interview}/?user_field_names=true`) 
-  baserowCache.topic = await fetchFromBaserow(`/database/rows/table/${topic}/?user_field_names=true`) 
-  baserowCache.excerpt = await fetchFromBaserow(`/database/rows/table/${excerpt}/?user_field_names=true`) 
-  console.log("baserow fetch ok!", baserowCache)
-}
+    // Global audio state management
+    window.globalAudioState = {
+      currentTime: 0,
+      currentInterviewId: null,
+      isPlaying: false,
+      currentSource: null
+    }
 
-const fetchFromBaserow = (apiPath) => {
-  // NOTE: Forgive me, reader, for I have sinned: a large language model wrote the initial version of this method. I modified it
-  // to refer to the global configuration object. In my opinion this is a clear illustration of the potential value of LLMs to coders 
-  // - being able to gloss over details of a well-documented API, generating code which is not quite trivial but whose correctness can be 
-  // assessed at a glance by an experienced developer.
-    return new Promise((resolve, reject) => {
+    const isExternalLink = (url) => {
+      const tmp = document.createElement('a');
+      tmp.href = url;
+      return tmp.host !== window.location.host;
+    };
+
+    window.onload = async () => {
+      console.log("--- application is booting ---")
+      await fetchEverythingFromBaserow()
+      console.log("--- baserow fetch successful; rendering ---")
+      renderMarkup()
+      setAppStateFromUrl();
+
+      document.querySelectorAll('a').forEach(link => {
+        if (isExternalLink(link.href)) {
+          link.setAttribute('target', '_blank');
+        }
+      });
+
+
+    }
+
+    const blobFromUrlParams = () => {
+      // NOTE: taken from stackoverflow
+      return location.search
+        .slice(1)
+        .split('&')
+        .map(p => p.split('='))
+        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+    }
+
+    const setAppStateFromUrl = () => {
+      console.log("setting app state from url")
+      const search = blobFromUrlParams()
+      if (search.interview !== "undefined") {
+        updateInterviewView(search.interview)
+        if (search.excerpt !== "undefined") {
+          highlightExcerptById(search.excerpt)
+          scrollToActiveSection()
+        }
+      } else if (search.topic !== "undefined") {
+        updateTopic(search.topic)
+      } else {
+        openMenu()
+      }
+    }
+
+    window.addEventListener("popstate", setAppStateFromUrl)
+
+    function scrollToTopicSection() {
+      document.getElementById('topic').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    const renderMarkup = () => {
+      document.querySelector("#nav").innerHTML = renderNav(baserowCache.interview.results, baserowCache.topic.results)
+    }
+
+    const updateInterviewView = (id) => {
+      console.log("id is ", id)
+      console.log("cached interviews are ", baserowCache.interview.results)
+
+      // Always stop topic audio when navigating to interview view
+      if (window.topicAudio) {
+        saveAudioState(window.topicAudio, window.globalAudioState.currentInterviewId)
+        window.topicAudio.pause()
+        window.topicAudio.currentTime = 0
+        // Remove the audio element from DOM completely
+        window.topicAudio.remove()
+        window.topicAudio = null
+      }
+
+      // Also pause any existing topic audio elements in the DOM
+      const existingTopicAudio = document.querySelector('#topic-audio')
+      if (existingTopicAudio) {
+        existingTopicAudio.pause()
+        existingTopicAudio.currentTime = 0
+      }
+
+      const interview = baserowCache.interview.results.find(i => i.id == id)
+      console.log("interview blob is ", interview)
+      document.querySelector("#interviews").innerHTML = renderInterview(interview)
+      document.querySelector("#nav").classList.add("hidden-nav");
+      window.audio = document.querySelector('audio');
+      window.excerpts = Array.from(document.querySelectorAll('.excerpt'));
+
+      // Add conflict prevention to interview audio
+      addAudioConflictPrevention(window.audio)
+
+      // Restore audio state if this is the same interview that was playing
+      if (window.globalAudioState.currentInterviewId == id) {
+        restoreAudioState(window.audio, id)
+      } else {
+        setAudioPositionFromUrl(window.location.search, audio);
+      }
+
+      window.interviewId = id;
+
+      // scroll on interview topic click
+      document.querySelectorAll('.interviewTopicButton').forEach((elem) => {
+        elem.addEventListener('click', function () {
+          setTimeout(() => {
+            scrollToTopicSection();
+          }, 500);
+        })
+      });
+
+    }
+
+
+
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('.topicButton')) {
+        scrollToTopicSection();
+      }
+
+    });
+
+
+
+
+
+
+    const updateTopic = (id) => {
+
+      document.querySelectorAll('.topic-list button').forEach((elem) => {
+        elem.classList.remove('active');
+      });
+      document.querySelector(`[data-topic-id="${id}"]`).classList.add('active');
+
+
+      //remove active class from other buttons and add it to clicked button
+
+
+      // setTimeout needed if clicking on a topic from interview view...
+      // setTimeout(function(){
+      //   document.getElementById('topic').scrollIntoView({ behavior: 'smooth' });
+      // }, 500);
+
+
+
+
+      // Save current audio state if we're coming from an interview page
+      if (window.audio && window.globalAudioState.currentInterviewId) {
+        saveAudioState(window.audio, window.globalAudioState.currentInterviewId)
+      }
+
+      const topicBlob = baserowCache.topic.results.find(t => t.id === id)
+      document.querySelector("#topic").innerHTML = renderTopicSection(topicBlob)
+      openMenu()
+      window.topicId = id
+
+      // Initialize topic audio player
+      window.topicAudio = document.querySelector('#topic-audio')
+      if (window.topicAudio) {
+        // Add conflict prevention to topic audio
+        addAudioConflictPrevention(window.topicAudio)
+
+        window.topicAudio.addEventListener('loadeddata', function () {
+          console.log('Topic audio loaded')
+
+          // Restore audio state if we have a current interview playing
+          if (window.globalAudioState.currentInterviewId) {
+            restoreAudioState(window.topicAudio, window.globalAudioState.currentInterviewId)
+          }
+        })
+      }
+    }
+
+    const openMenu = () => {
+      document.querySelector("#nav").classList.remove("hidden-nav");
+    }
+
+    const toggleMenu = () => {
+      const nav = document.querySelector("#nav");
+      if (nav.classList.contains("hidden-nav")) {
+        // Menu is closed, open it
+        openMenu();
+      } else {
+        // Menu is open, close it and return to interview view
+        nav.classList.add("hidden-nav");
+      }
+    }
+
+    const fetchEverythingFromBaserow = async () => {
+      const { interview, excerpt, topic } = globals.baserow.tableIds
+      // NOTE: this was written under the assumption that there aren't enough rows in these tables to cause pagination; as written,
+      // this will only pull the first page of results from each table. assuming this thing isn't going to scale arbitarily, we 
+      // could get away with continuing to fetch records and shove them into the cache until each table is exhausted.
+      baserowCache.interview = await fetchFromBaserow(`/database/rows/table/${interview}/?user_field_names=true`)
+      baserowCache.topic = await fetchFromBaserow(`/database/rows/table/${topic}/?user_field_names=true`)
+      baserowCache.excerpt = await fetchFromBaserow(`/database/rows/table/${excerpt}/?user_field_names=true`)
+      console.log("baserow fetch ok!", baserowCache)
+    }
+
+    const fetchFromBaserow = (apiPath) => {
+      // NOTE: Forgive me, reader, for I have sinned: a large language model wrote the initial version of this method. I modified it
+      // to refer to the global configuration object. In my opinion this is a clear illustration of the potential value of LLMs to coders 
+      // - being able to gloss over details of a well-documented API, generating code which is not quite trivial but whose correctness can be 
+      // assessed at a glance by an experienced developer.
+      return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("GET", globals.baserow.url + apiPath, true);
-	      xhr.setRequestHeader("Authorization", `Token ${globals.baserow.token}`);
+        xhr.setRequestHeader("Authorization", `Token ${globals.baserow.token}`);
         xhr.setRequestHeader("Content-Type", "application/json");
         xhr.onreadystatechange = function () {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                xhr.status === 200 ? resolve(JSON.parse(xhr.responseText)) : reject(new Error(`Error ${xhr.status}: ${xhr.statusText}`));
-            }
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            xhr.status === 200 ? resolve(JSON.parse(xhr.responseText)) : reject(new Error(`Error ${xhr.status}: ${xhr.statusText}`));
+          }
         };
         xhr.onerror = () => reject(new Error("Network error"));
         xhr.send();
-    });
-}
+      });
+    }
 
-const excerptsForInterview = (interview) => {
-  const ids = interview["Excerpt"].map(excerpt => excerpt.id)
-  const filteredExcerpts = baserowCache.excerpt.results.filter(excerpt => ids.indexOf(excerpt.id) !== -1)
-  return filteredExcerpts
-}
+    const excerptsForInterview = (interview) => {
+      const ids = interview["Excerpt"].map(excerpt => excerpt.id)
+      const filteredExcerpts = baserowCache.excerpt.results.filter(excerpt => ids.indexOf(excerpt.id) !== -1)
+      return filteredExcerpts
+    }
 
-const onExcerptClick = (event) => {
-  if (event.currentTarget.classList.contains("active")) return
-  const { id, timeMs, interviewId } = event.currentTarget.dataset
-  
-  // Pause any other audio
-  pauseAllAudio()
-  
-  const audioElement = document.getElementById("audio-"+interviewId)
-  audioElement.currentTime = timeMs / 1000
-  
-  // Update global state
-  window.globalAudioState.currentTime = timeMs / 1000
-  window.globalAudioState.currentInterviewId = interviewId
-  window.globalAudioState.isPlaying = true
-  window.globalAudioState.currentSource = audioElement.src
-}
+    const onExcerptClick = (event) => {
+      if (event.currentTarget.classList.contains("active")) return
+      const { id, timeMs, interviewId } = event.currentTarget.dataset
 
-const renderTopicExcerpt = (excerpt) => {
-  const interviewId = excerpt["Interview"][0]["id"]
-  const interviewName = excerpt["Interview"][0]["value"]
-  const content = markdownRenderer.makeHtml(excerpt["Content"])
-  const time = excerpt["Start Time"]
-  const timeMs = time * 1000
-  const timeReadable = new Date(timeMs).toISOString().substring(11, 19)
-  
-  const excerptTemplate = `
+      // Pause any other audio
+      pauseAllAudio()
+
+      const audioElement = document.getElementById("audio-" + interviewId)
+      audioElement.currentTime = timeMs / 1000
+
+      // Update global state
+      window.globalAudioState.currentTime = timeMs / 1000
+      window.globalAudioState.currentInterviewId = interviewId
+      window.globalAudioState.isPlaying = true
+      window.globalAudioState.currentSource = audioElement.src
+    }
+
+    const renderTopicExcerpt = (excerpt) => {
+      const interviewId = excerpt["Interview"][0]["id"]
+      const interviewName = excerpt["Interview"][0]["value"]
+      const content = markdownRenderer.makeHtml(excerpt["Content"])
+      const time = excerpt["Start Time"]
+      const timeMs = time * 1000
+      const timeReadable = new Date(timeMs).toISOString().substring(11, 19)
+
+      const excerptTemplate = `
   <div class="topic-excerpt" data-interview-id="${interviewId}" data-time-ms="${timeMs}" onclick="playTopicExcerpt(${interviewId}, ${timeMs})">
     <div class="excerpt-time">${timeReadable}</div>
     <h3>${interviewName}</h3>
     <div class="content">${content}</div>
   </div>
   `
-  return excerptTemplate;
-}
+      return excerptTemplate;
+    }
 
-const renderExcerpt = (excerpt) => {
-  const id = excerpt["id"]
-  const interviewId = excerpt["Interview"][0]["id"]
-  const content = markdownRenderer.makeHtml(excerpt["Content"])
-  const time = excerpt["Start Time"]
-  const resource = excerpt["Resources"]
-  const resourceMarkup = resource ? markdownRenderer.makeHtml(resource)  : ''
-  const timeMs = time * 1000
-  const timeReadable = new Date(timeMs).toISOString().substring(11, 19)
-  console.log(excerpt["Topic"])
-  const topics = excerpt["Topic"].map(t => `<a class="interviewTopicButton" onclick="withHistory({topic: ${t.id}}, updateTopic, ${t.id})">${t.value} ↠</a>`).join('\n')
-  const topicList = excerpt["Topic"].length === 0 ? '' : `
+    const renderExcerpt = (excerpt) => {
+      const id = excerpt["id"]
+      const interviewId = excerpt["Interview"][0]["id"]
+      const content = markdownRenderer.makeHtml(excerpt["Content"])
+      const time = excerpt["Start Time"]
+      const resource = excerpt["Resources"]
+      const resourceMarkup = resource ? markdownRenderer.makeHtml(resource) : ''
+      const timeMs = time * 1000
+      const timeReadable = new Date(timeMs).toISOString().substring(11, 19)
+      console.log(excerpt["Topic"])
+      const topics = excerpt["Topic"].map(t => `<a class="interviewTopicButton" onclick="withHistory({topic: ${t.id}}, updateTopic, ${t.id})">${t.value} ↠</a>`).join('\n')
+      const topicList = excerpt["Topic"].length === 0 ? '' : `
     <div class="topic-list" onclick="stopEventBubble(event)">
       <label>Topics</label>
       ${topics}
     </div>
   `
-  const excerptTemplate = `
+      const excerptTemplate = `
   <tr class="excerpt" data-id="${id}" data-time-ms="${timeMs}" data-interview-id="${interviewId}" onclick="withHistory({interview: ${interviewId}, excerpt: ${id}}, onExcerptClick, event)">
     <td class="time">${timeReadable}</td>
     <td class="content">${content}</td>
@@ -318,32 +338,32 @@ const renderExcerpt = (excerpt) => {
     </td>
   </tr>
   `
-  return excerptTemplate;
-}
-
-const onAudioPlayed = (event) => {
-  highlightTranscript('playing')
-}
-
-const onAudioSeeked = (event) => {
-  highlightTranscript()
-}
-
-const renderNav = (interviews, topics) => {
-  const interviewList = interviews.map(interview => {
-    const id = interview["id"]
-    const name = interview["Name"];
-    if(name) {
-return `<button onclick="withHistory({interview: ${id}}, updateInterviewView, ${id})"><div>${name}</div></button>`
+      return excerptTemplate;
     }
-    
-  }).join('\n')
-  const topicList = topics.map(topic => {
-    const id = topic["id"]
-    const name = topic["Name"]
-    return `<button class="topicButton" data-topic-id="${id}" onclick="withHistory({topic: ${id}}, updateTopic, ${id})"><div>${name}</div></button>`
-  }).join('\n')
-  const navTemplate = `
+
+    const onAudioPlayed = (event) => {
+      highlightTranscript('playing')
+    }
+
+    const onAudioSeeked = (event) => {
+      highlightTranscript()
+    }
+
+    const renderNav = (interviews, topics) => {
+      const interviewList = interviews.map(interview => {
+        const id = interview["id"]
+        const name = interview["Name"];
+        if (name) {
+          return `<button onclick="withHistory({interview: ${id}}, updateInterviewView, ${id})"><div>${name}</div></button>`
+        }
+
+      }).join('\n')
+      const topicList = topics.map(topic => {
+        const id = topic["id"]
+        const name = topic["Name"]
+        return `<button class="topicButton" data-topic-id="${id}" onclick="withHistory({topic: ${id}}, updateTopic, ${id})"><div>${name}</div></button>`
+      }).join('\n')
+      const navTemplate = `
   <div id="nav-container">
     <div class="nav-left">
     <h1>Resource Stories</h1>
@@ -368,30 +388,30 @@ The Resource Stories website is a space for growers to share stories that demyst
     </div>
   </div>
   `
-  return navTemplate;
-}
-
-const renderTopicSection = (topic) => {
-  const name = topic["Name"];
-  const excerptList = baserowCache.excerpt.results.filter(excerpt => {
-    if (excerpt["Topic"].some(e => e.id === topic["id"])) {
-      return excerpt;
+      return navTemplate;
     }
-  })
-  
-  // Get unique interviews for this topic
-  const uniqueInterviews = [...new Set(excerptList.map(excerpt => excerpt["Interview"][0]["id"]))]
-  
-  // Create audio sources for all interviews in this topic
-  const audioSources = uniqueInterviews.map(interviewId => {
-    const interview = baserowCache.interview.results.find(i => i.id == interviewId)
-    const audioUrl = interview["Audio File"][0]["url"]
-    return `<source src="${audioUrl}" type="audio/mp3" data-interview-id="${interviewId}" />`
-  }).join('\n')
-  
-  const excerptMarkup = excerptList.map(e => renderTopicExcerpt(e)).join("\n")
 
-  const topicTemplate = `<div class="topic-section">
+    const renderTopicSection = (topic) => {
+      const name = topic["Name"];
+      const excerptList = baserowCache.excerpt.results.filter(excerpt => {
+        if (excerpt["Topic"].some(e => e.id === topic["id"])) {
+          return excerpt;
+        }
+      })
+
+      // Get unique interviews for this topic
+      const uniqueInterviews = [...new Set(excerptList.map(excerpt => excerpt["Interview"][0]["id"]))]
+
+      // Create audio sources for all interviews in this topic
+      const audioSources = uniqueInterviews.map(interviewId => {
+        const interview = baserowCache.interview.results.find(i => i.id == interviewId)
+        const audioUrl = interview["Audio File"][0]["url"]
+        return `<source src="${audioUrl}" type="audio/mp3" data-interview-id="${interviewId}" />`
+      }).join('\n')
+
+      const excerptMarkup = excerptList.map(e => renderTopicExcerpt(e)).join("\n")
+
+      const topicTemplate = `<div class="topic-section">
     <h2>${name}</h2>
     <div class="topic-audio-section">
       <audio id="topic-audio" controls="" preload="auto">
@@ -405,27 +425,27 @@ const renderTopicSection = (topic) => {
       ${excerptMarkup}
     </div>
   </div>`
-    return topicTemplate;
-}
+      return topicTemplate;
+    }
 
-const renderInterview = (interview) => {
-  console.log("attempting to render interview", interview)
-  const id = interview["id"]
-  const name = interview["Name"]
-  const title = interview["Title"]
-  const subtitle = interview["Subtitle"]
-  const audioUrl = interview["Audio File"][0]["url"]
-  const imageUrl = interview["Image"][0] ? interview["Image"][0]["url"] : null
-  const youtubeUrl = interview["YouTube URL"] || null
-  const imageMarkup = imageUrl ? `<img src='${imageUrl}' />` : ''
-  
-  // Create YouTube embed if URL is provided
-  let youtubeEmbed = ''
-  if (youtubeUrl) {
-    // Extract video ID from various YouTube URL formats
-    const videoId = extractYouTubeVideoId(youtubeUrl)
-    if (videoId) {
-      youtubeEmbed = `
+    const renderInterview = (interview) => {
+      console.log("attempting to render interview", interview)
+      const id = interview["id"]
+      const name = interview["Name"]
+      const title = interview["Title"]
+      const subtitle = interview["Subtitle"]
+      const audioUrl = interview["Audio File"][0]["url"]
+      const imageUrl = interview["Image"][0] ? interview["Image"][0]["url"] : null
+      const youtubeUrl = interview["YouTube URL"] || null
+      const imageMarkup = imageUrl ? `<img src='${imageUrl}' />` : ''
+
+      // Create YouTube embed if URL is provided
+      let youtubeEmbed = ''
+      if (youtubeUrl) {
+        // Extract video ID from various YouTube URL formats
+        const videoId = extractYouTubeVideoId(youtubeUrl)
+        if (videoId) {
+          youtubeEmbed = `
         <div class="youtube-container">
           <iframe 
             src="https://www.youtube.com/embed/${videoId}" 
@@ -436,12 +456,12 @@ const renderInterview = (interview) => {
           </iframe>
         </div>
       `
-    }
-  }
-  
-  const excerpts = excerptsForInterview(interview)
-  const excerptMarkup = excerpts.map(e => renderExcerpt(e)).join("\n")
-  const interviewTemplate = `
+        }
+      }
+
+      const excerpts = excerptsForInterview(interview)
+      const excerptMarkup = excerpts.map(e => renderExcerpt(e)).join("\n")
+      const interviewTemplate = `
 <div class="interview" data-id="${id}">
   <div class="excerpt-section">
   <div class="intro-section">
@@ -471,197 +491,199 @@ const renderInterview = (interview) => {
   </div>
 </div>
 `
-  return interviewTemplate; 
-}
-
-const setAudioPositionFromUrl = (search, audio) => {
-  var urlMilliseconds;
-  const urlParams = new URLSearchParams(search);
-  urlParams.forEach((value, key) => {
-    if (key == "t") {
-      urlMilliseconds = value;
+      return interviewTemplate;
     }
-  });
-  if (urlMilliseconds) {
-    audio.currentTime = urlMilliseconds / 1000;
-  }
-}
 
-const highlightExcerpt = (index) => {
-  if (index === -1) index = 0
-  document.querySelector(".active")?.classList.remove("active")
-  window.excerpts[index].classList.add("active");
-}
-
-const highlightExcerptById = (index) => {
-  const excerpt = document.querySelector(`tr.excerpt[data-id='${index}']`)
-  if (!excerpt) return;
-  document.querySelector(".active")?.classList.remove("active")
-  excerpt.classList.add("active");
-}
-
-const isNextExcerpt = (t) => t > window.interviewPositionMs;
-
-const highlightTranscript = (status) => {
-  const { audio, excerpts } = window
-  window.interviewPositionMs = audio.currentTime * 1000;
-  const excerptTimestamps = excerpts.map(e => e.dataset.timeMs)
-  var nextIndex = excerptTimestamps.findIndex(isNextExcerpt);
-  const hasNext = nextIndex == -1 ? false : true
-  if (hasNext === false) nextIndex = excerpts.length
-  const currentIndex = nextIndex - 1;
-  highlightExcerpt(currentIndex);
-  if (hasNext && status === "playing") {
-    const delayMilliseconds = excerpts[nextIndex].dataset.timeMs - window.interviewPositionMs;
-    setTimeout(function () {
-      highlightTranscript("playing");
-    }, delayMilliseconds);
-  }
-}
-
-const scrollToActiveSection = () => document.querySelector(".excerpt.active")?.scrollIntoView({ behavior: "smooth" });
-
-// Extract YouTube video ID from various URL formats
-const extractYouTubeVideoId = (url) => {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-    /youtube\.com\/watch\?.*v=([^&\n?#]+)/
-  ];
-  
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) {
-      return match[1];
-    }
-  }
-  return null;
-};
-
-// Global audio state management functions
-const pauseAllAudio = () => {
-  console.log('Pausing all audio elements')
-  
-  // Pause interview audio
-  if (window.audio) {
-    console.log('Pausing interview audio')
-    window.audio.pause()
-  }
-  
-  // Pause topic audio
-  if (window.topicAudio) {
-    console.log('Pausing topic audio')
-    window.topicAudio.pause()
-  }
-  
-  // Pause any audio elements in the DOM
-  const allAudioElements = document.querySelectorAll('audio')
-  allAudioElements.forEach(audio => {
-    if (!audio.paused) {
-      console.log('Pausing DOM audio element')
-      audio.pause()
-    }
-  })
-}
-
-const addAudioConflictPrevention = (audioElement) => {
-  if (!audioElement) return
-  
-  audioElement.addEventListener('play', function() {
-    console.log('Audio play event detected, pausing all other audio')
-    // Pause all other audio when this one starts playing
-    const allAudioElements = document.querySelectorAll('audio')
-    allAudioElements.forEach(audio => {
-      if (audio !== audioElement && !audio.paused) {
-        console.log('Pausing other audio element')
-        audio.pause()
+    const setAudioPositionFromUrl = (search, audio) => {
+      var urlMilliseconds;
+      const urlParams = new URLSearchParams(search);
+      urlParams.forEach((value, key) => {
+        if (key == "t") {
+          urlMilliseconds = value;
+        }
+      });
+      if (urlMilliseconds) {
+        audio.currentTime = urlMilliseconds / 1000;
       }
-    })
-  })
-}
-
-const saveAudioState = (audioElement, interviewId) => {
-  if (audioElement && !audioElement.paused) {
-    window.globalAudioState.currentTime = audioElement.currentTime
-    window.globalAudioState.currentInterviewId = interviewId
-    window.globalAudioState.isPlaying = true
-    window.globalAudioState.currentSource = audioElement.src
-  }
-}
-
-const restoreAudioState = (audioElement, interviewId) => {
-  if (audioElement && window.globalAudioState.currentInterviewId == interviewId) {
-    audioElement.currentTime = window.globalAudioState.currentTime
-    if (window.globalAudioState.isPlaying) {
-      audioElement.play()
     }
-  }
-}
 
-// Play topic excerpt at specific time
-const playTopicExcerpt = (interviewId, timeMs) => {
-  if (!window.topicAudio) return;
-  
-  // Pause any other audio
-  pauseAllAudio()
-  
-  // Find the correct audio source for this interview
-  const sources = window.topicAudio.querySelectorAll('source')
-  let targetSource = null
-  
-  for (const source of sources) {
-    if (source.dataset.interviewId == interviewId) {
-      targetSource = source
-      break
+    const highlightExcerpt = (index) => {
+      if (index === -1) index = 0
+      document.querySelector(".active")?.classList.remove("active")
+      window.excerpts[index].classList.add("active");
     }
-  }
-  
-  if (targetSource) {
-    // Switch to the correct audio source if needed
-    if (window.topicAudio.src !== targetSource.src) {
-      window.topicAudio.src = targetSource.src
-      window.topicAudio.load()
+
+    const highlightExcerptById = (index) => {
+      const excerpt = document.querySelector(`tr.excerpt[data-id='${index}']`)
+      if (!excerpt) return;
+      document.querySelector(".active")?.classList.remove("active")
+      excerpt.classList.add("active");
     }
-    
-    // Set the time and play
-    window.topicAudio.currentTime = timeMs / 1000
-    window.topicAudio.play()
-    
-    // Update global state
-    window.globalAudioState.currentTime = timeMs / 1000
-    window.globalAudioState.currentInterviewId = interviewId
-    window.globalAudioState.isPlaying = true
-    window.globalAudioState.currentSource = window.topicAudio.src
-    
-    // Update the current interview info
-    const interview = baserowCache.interview.results.find(i => i.id == interviewId)
-    const currentInterviewName = document.querySelector('#current-interview-name')
-    if (currentInterviewName && interview) {
-      currentInterviewName.textContent = `Now playing: ${interview["Name"]}`
+
+    const isNextExcerpt = (t) => t > window.interviewPositionMs;
+
+    const highlightTranscript = (status) => {
+      const { audio, excerpts } = window
+      window.interviewPositionMs = audio.currentTime * 1000;
+      const excerptTimestamps = excerpts.map(e => e.dataset.timeMs)
+      var nextIndex = excerptTimestamps.findIndex(isNextExcerpt);
+      const hasNext = nextIndex == -1 ? false : true
+      if (hasNext === false) nextIndex = excerpts.length
+      const currentIndex = nextIndex - 1;
+      highlightExcerpt(currentIndex);
+      if (hasNext && status === "playing") {
+        const delayMilliseconds = excerpts[nextIndex].dataset.timeMs - window.interviewPositionMs;
+        setTimeout(function () {
+          highlightTranscript("playing");
+        }, delayMilliseconds);
+      }
     }
-    
-    // Highlight the clicked excerpt
-    document.querySelectorAll('.topic-excerpt').forEach(excerpt => {
-      excerpt.classList.remove('active')
-    })
-    event.currentTarget.classList.add('active')
-  }
-};
 
-const withHistory = (blob, method, ...args) => {
-  method.apply(this, args)
-  setHistoryState(blob)
-}
+    const scrollToActiveSection = () => document.querySelector(".excerpt.active")?.scrollIntoView({ behavior: "smooth" });
 
-const setHistoryState = (blob) => {
-  history.pushState({}, "", "?" + new URLSearchParams(blob).toString())
-}
+    // Extract YouTube video ID from various URL formats
+    const extractYouTubeVideoId = (url) => {
+      const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+        /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+      ];
 
-const logError = (error) => console.error("Error", error.message);
-const stopEventBubble = (e) => e.stopPropagation();
-</script>
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) {
+          return match[1];
+        }
+      }
+      return null;
+    };
+
+    // Global audio state management functions
+    const pauseAllAudio = () => {
+      console.log('Pausing all audio elements')
+
+      // Pause interview audio
+      if (window.audio) {
+        console.log('Pausing interview audio')
+        window.audio.pause()
+      }
+
+      // Pause topic audio
+      if (window.topicAudio) {
+        console.log('Pausing topic audio')
+        window.topicAudio.pause()
+      }
+
+      // Pause any audio elements in the DOM
+      const allAudioElements = document.querySelectorAll('audio')
+      allAudioElements.forEach(audio => {
+        if (!audio.paused) {
+          console.log('Pausing DOM audio element')
+          audio.pause()
+        }
+      })
+    }
+
+    const addAudioConflictPrevention = (audioElement) => {
+      if (!audioElement) return
+
+      audioElement.addEventListener('play', function () {
+        console.log('Audio play event detected, pausing all other audio')
+        // Pause all other audio when this one starts playing
+        const allAudioElements = document.querySelectorAll('audio')
+        allAudioElements.forEach(audio => {
+          if (audio !== audioElement && !audio.paused) {
+            console.log('Pausing other audio element')
+            audio.pause()
+          }
+        })
+      })
+    }
+
+    const saveAudioState = (audioElement, interviewId) => {
+      if (audioElement && !audioElement.paused) {
+        window.globalAudioState.currentTime = audioElement.currentTime
+        window.globalAudioState.currentInterviewId = interviewId
+        window.globalAudioState.isPlaying = true
+        window.globalAudioState.currentSource = audioElement.src
+      }
+    }
+
+    const restoreAudioState = (audioElement, interviewId) => {
+      if (audioElement && window.globalAudioState.currentInterviewId == interviewId) {
+        audioElement.currentTime = window.globalAudioState.currentTime
+        if (window.globalAudioState.isPlaying) {
+          audioElement.play()
+        }
+      }
+    }
+
+    // Play topic excerpt at specific time
+    const playTopicExcerpt = (interviewId, timeMs) => {
+      if (!window.topicAudio) return;
+
+      // Pause any other audio
+      pauseAllAudio()
+
+      // Find the correct audio source for this interview
+      const sources = window.topicAudio.querySelectorAll('source')
+      let targetSource = null
+
+      for (const source of sources) {
+        if (source.dataset.interviewId == interviewId) {
+          targetSource = source
+          break
+        }
+      }
+
+      if (targetSource) {
+        // Switch to the correct audio source if needed
+        if (window.topicAudio.src !== targetSource.src) {
+          window.topicAudio.src = targetSource.src
+          window.topicAudio.load()
+        }
+
+        // Set the time and play
+        window.topicAudio.currentTime = timeMs / 1000
+        window.topicAudio.play()
+
+        // Update global state
+        window.globalAudioState.currentTime = timeMs / 1000
+        window.globalAudioState.currentInterviewId = interviewId
+        window.globalAudioState.isPlaying = true
+        window.globalAudioState.currentSource = window.topicAudio.src
+
+        // Update the current interview info
+        const interview = baserowCache.interview.results.find(i => i.id == interviewId)
+        const currentInterviewName = document.querySelector('#current-interview-name')
+        if (currentInterviewName && interview) {
+          currentInterviewName.textContent = `Now playing: ${interview["Name"]}`
+        }
+
+        // Highlight the clicked excerpt
+        document.querySelectorAll('.topic-excerpt').forEach(excerpt => {
+          excerpt.classList.remove('active')
+        })
+        event.currentTarget.classList.add('active')
+      }
+    };
+
+    const withHistory = (blob, method, ...args) => {
+      method.apply(this, args)
+      setHistoryState(blob)
+    }
+
+    const setHistoryState = (blob) => {
+      history.pushState({}, "", "?" + new URLSearchParams(blob).toString())
+    }
+
+    const logError = (error) => console.error("Error", error.message);
+    const stopEventBubble = (e) => e.stopPropagation();
+  </script>
 </head>
+
 <body>
   <div id="nav"></div>
   <div id="interviews"></div>
 </body>
+
 </html>

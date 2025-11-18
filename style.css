@@ -37,12 +37,15 @@ h3 {
   font-size: 2em;
 }
 
+
+
 audio {
   /* border-top: 2px solid black;
   border-bottom: 2px solid black;
   padding: 10px; */
   width: -webkit-fill-available;
   width: -moz-available;
+
 }
 
 td {
@@ -455,11 +458,19 @@ tr.excerpt td {
   --mobileMenuHeight: 100px;
 }
 
+.resources-block a {
+  display: block;
+  margin: 10px 0;
+}
+
 /* mobile styles */
 @media only screen and (max-width: 1024px) {
 
   .nav-right {
   padding: 1rem;
+}
+.hidden-nav .nav-right {
+  padding: 3rem;
 }
 .topic-section {
   max-width: none;
@@ -585,23 +596,16 @@ tr.excerpt td {
     background-color: #fff;
   }
 
-  audio {
+  /* audio {
     border: 0;
     padding: 0;
     margin: 10px;
-    display: block;
+
     position: relative;
     z-index: 1;
-  }
 
-  /* audio {
-    position: fixed;
-    display: block;
-    background-color: var(--beige);
-    bottom: 0;
-    height: auto;
-    padding: 0; 
   } */
+
 
   .excerpt {
     display: flex;
